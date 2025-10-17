@@ -60,8 +60,8 @@ if st.session_state["authentication_status"]:
         worksheet_base = spreadsheet.worksheet('basededados')
         worksheet_coords = spreadsheet.worksheet('coordenadas')
 
-        dados = get_as_dataframe(worksheet_base)
-        coordenadas = get_as_dataframe(worksheet_coords)
+        dados = get_as_dataframe(worksheet_base, header=0)
+        coordenadas = get_as_dataframe(worksheet_coords, header=0)
 
         dados.dropna(axis=1, how='all', inplace=True)
         coordenadas.dropna(axis=1, how='all', inplace=True)
@@ -201,22 +201,20 @@ if st.session_state["authentication_status"]:
     # ========================
     with tab_cidade:
         st.subheader("📍 Distribuição de alunos por cidade")
-        df_cidade = df_filtrado.groupby(["Chave", "Cidade", "Estado", "Latitude", "Longitude"]).size().reset_index(name="Qtd")
-        df_cidade = df_cidade.dropna(subset=["Latitude","Longitude"])
-        mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
-                                        hover_name="Cidade",
-                                        hover_data={"Estado":True,"Qtd":True},
-                                        color="Qtd",
-                                        color_continuous_scale=[COR_LARANJA, COR_ROXO],
-                                        size_max=35,
-                                        zoom=3,
-                                        height=600)
-        mapa_bolhas.update_layout(mapbox_style="open-street-map",
-                                  margin={"r":0,"t":0,"l":0,"b":0},
-                                  paper_bgcolor=COR_FUNDO,
-                                  plot_bgcolor=COR_FUNDO,
-                                  font_color=COR_TEXTO)
+        # ... (código do mapa de bolhas aqui, deixe como está) ...
         st.plotly_chart(mapa_bolhas, use_container_width=True)
+    
+        # --- INÍCIO DO CÓDIGO DE DIAGNÓSTICO ---
+        st.subheader("🔍 Diagnóstico: Verificando os Dados")
+        
+        st.write("Abaixo estão as 50 primeiras linhas dos dados filtrados que estão sendo usados nesta aba:")
+        st.dataframe(df_filtrado.head(50))
+    
+        st.write(f"E aqui estão os dados exatos que estão sendo enviados para o gráfico 'Top {top_n_cidades} Cidades':")
+        top_cidades_debug = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
+        top_cidades_debug = top_cidades_debug.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
+        st.dataframe(top_cidades_debug)
+        # --- FIM DO CÓDIGO DE DIAGNÓSTICO ---
     
         st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
         top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
@@ -289,6 +287,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
