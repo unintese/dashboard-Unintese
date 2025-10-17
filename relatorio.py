@@ -58,7 +58,7 @@ if st.session_state["authentication_status"]:
     # ========================
     # FUNÇÃO DE CACHE PARA CARREGAR DADOS
     # ========================
-    @st.cache_data(ttl=600)
+    @st.cache_data(ttl=30)
     def carregar_dados():
         try:
             creds_dict = st.secrets['gcp_service_account']
@@ -92,6 +92,10 @@ if st.session_state["authentication_status"]:
             st.error(f"Erro ao carregar dados do Google Sheets: {e}")
             st.info("Verifique as credenciais 'gcp_service_account' e os nomes da planilha/abas.")
             return None
+
+    if st.button("🔄 Atualizar dados agora"):
+        st.cache_data.clear()
+        st.rerun()
 
     dados = carregar_dados()
 
@@ -276,6 +280,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
