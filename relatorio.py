@@ -201,38 +201,32 @@ if st.session_state["authentication_status"]:
     # ========================
     with tab_cidade:
         st.subheader("📍 Distribuição de alunos por cidade")
-        # ... (código do mapa de bolhas aqui, deixe como está) ...
+        df_cidade = df_filtrado.groupby(["Chave", "Cidade", "Estado", "Latitude", "Longitude"]).size().reset_index(name="Qtd")
+        df_cidade = df_cidade.dropna(subset=["Latitude","Longitude"])
+        mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
+                                        hover_name="Cidade", hover_data={"Estado":True,"Qtd":True},
+                                        color="Qtd", color_continuous_scale=[COR_LARANJA, COR_ROXO],
+                                        size_max=35, zoom=3, height=600)
+        mapa_bolhas.update_layout(mapbox_style="open-street-map", margin={"r":0,"t":0,"l":0,"b":0},
+                                  paper_bgcolor=COR_FUNDO, plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
         st.plotly_chart(mapa_bolhas, use_container_width=True)
-    
-        # --- INÍCIO DO CÓDIGO DE DIAGNÓSTICO ---
-        st.subheader("🔍 Diagnóstico: Verificando os Dados")
-        
-        st.write("Abaixo estão as 50 primeiras linhas dos dados filtrados que estão sendo usados nesta aba:")
-        st.dataframe(df_filtrado.head(50))
-    
-        st.write(f"E aqui estão os dados exatos que estão sendo enviados para o gráfico 'Top {top_n_cidades} Cidades':")
-        top_cidades_debug = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
-        top_cidades_debug = top_cidades_debug.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
-        st.dataframe(top_cidades_debug)
-        # --- FIM DO CÓDIGO DE DIAGNÓSTICO ---
     
         st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
         top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
         top_cidades = top_cidades.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
-        
-        # --- INÍCIO DA CORREÇÃO ---
         fig_top_cidades = px.bar(top_cidades, x="Qtd Alunos", y="Cidade", orientation="h",
                                  color_discrete_sequence=[COR_ROXO])
-        
-        # Usamos %{x:,} para formatar o valor do eixo X (Qtd Alunos)
         fig_top_cidades.update_traces(texttemplate='%{x:,}', textposition='auto', textfont=dict(color=COR_TEXTO))
-        # --- FIM DA CORREÇÃO ---
-        
-        fig_top_cidades.update_layout(yaxis={'categoryorder':'total ascending'},
-                                      paper_bgcolor=COR_FUNDO,
-                                      plot_bgcolor=COR_FUNDO,
-                                      font_color=COR_TEXTO)
+        fig_top_cidades.update_layout(yaxis={'categoryorder':'total ascending'}, paper_bgcolor=COR_FUNDO,
+                                      plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
         st.plotly_chart(fig_top_cidades, use_container_width=True)
+
+        # --- CÓDIGO DE DIAGNÓSTICO ---
+        st.subheader("🔍 Diagnóstico: Verificando os Dados da Aba Cidade")
+        st.write("50 primeiras linhas dos dados filtrados:")
+        st.dataframe(df_filtrado.head(50))
+        st.write(f"Dados agrupados para o gráfico 'Top {top_n_cidades} Cidades':")
+        st.dataframe(top_cidades)
 
     # ========================
     # ABA ESTADOS
@@ -240,43 +234,31 @@ if st.session_state["authentication_status"]:
     with tab_estado:
         st.subheader("🗺️ Distribuição de alunos por estado")
         df_estado = df_filtrado.groupby("Estado").size().reset_index(name="Qtd")
-        mapa_estados = px.choropleth(df_estado,
-                                     geojson="https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson",
+        mapa_estados = px.choropleth(df_estado, geojson="https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson",
                                      locations="Estado", featureidkey="properties.sigla", color="Qtd",
                                      color_continuous_scale=[COR_LARANJA, COR_ROXO],
-                                     scope="south america",
-                                     height=600)
+                                     scope="south america", height=600)
         mapa_estados.update_geos(fitbounds="locations", visible=False)
-        mapa_estados.update_layout(margin={"r":0,"t":0,"l":0,"b":0},
-                                   paper_bgcolor=COR_FUNDO,
-                                   plot_bgcolor=COR_FUNDO,
-                                   font_color=COR_TEXTO,
+        mapa_estados.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor=COR_FUNDO,
+                                   plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO,
                                    hoverlabel=dict(bgcolor=COR_ROXO, font_size=14, font_color=COR_TEXTO))
-        
-        # --- INÍCIO DA CORREÇÃO NO MAPA ---
-        # Removemos o .replace() que estava causando erro
         mapa_estados.update_traces(hovertemplate='Estado: %{location}<br>Qtd: %{z:,}')
-        # --- FIM DA CORREÇÃO NO MAPA ---
-        
         st.plotly_chart(mapa_estados, use_container_width=True)
     
         st.subheader(f"🗺️ Top {top_n_estados} Estados com mais alunos")
         top_estados = df_filtrado.groupby("Estado").size().reset_index(name="Qtd Alunos")
         top_estados = top_estados.sort_values(by="Qtd Alunos", ascending=False).head(top_n_estados)
-        
-        # --- INÍCIO DA CORREÇÃO NO GRÁFICO ---
         fig_top_estados = px.bar(top_estados, x="Qtd Alunos", y="Estado", orientation="h",
                                  color_discrete_sequence=[COR_LARANJA])
-        
-        # Usamos %{x:,} para formatar o valor do eixo X (Qtd Alunos)
         fig_top_estados.update_traces(texttemplate='%{x:,}', textposition='auto', textfont=dict(color=COR_TEXTO))
-        # --- FIM DA CORREÇÃO NO GRÁFICO ---
-    
-        fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'},
-                                      paper_bgcolor=COR_FUNDO,
-                                      plot_bgcolor=COR_FUNDO,
-                                      font_color=COR_TEXTO)
+        fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'}, paper_bgcolor=COR_FUNDO,
+                                      plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
         st.plotly_chart(fig_top_estados, use_container_width=True)
+        
+        # --- CÓDIGO DE DIAGNÓSTICO ---
+        st.subheader("🔍 Diagnóstico: Verificando os Dados da Aba Estado")
+        st.write(f"Dados agrupados para o gráfico 'Top {top_n_estados} Estados':")
+        st.dataframe(top_estados)
     
         # ========================
         # RODAPÉ
@@ -287,6 +269,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
