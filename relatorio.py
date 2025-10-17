@@ -4,6 +4,7 @@ import plotly.express as px
 import gspread
 import streamlit_authenticator as stauth
 from gspread_dataframe import get_as_dataframe
+from supabase import create_client, Client
 
 # ========================
 # CONFIGURAÇÃO DA PÁGINA
@@ -14,37 +15,48 @@ st.set_page_config(page_title="Dashboard Acadêmica", page_icon="logo-unintese-s
 # LÓGICA DE AUTENTICAÇÃO
 # ========================
 # (Seu código de autenticação permanece o mesmo)
-config = {
-    'credentials': {
-        'usernames': {}
-    },
-    'cookie': {
-        'name': st.secrets['cookie']['name'],
-        'key': st.secrets['cookie']['key'],
-        'expiry_days': st.secrets['cookie']['expiry_days']
-    }
-}
-for username, user_info in st.secrets['credentials']['usernames'].items():
-    config['credentials']['usernames'][username] = {
-        'email': user_info['email'],
-        'name': user_info['name'],
-        'password': user_info['password']
-    }
+# Conecta ao Supabase usando os secrets do Streamlit Cloud
+url = st.secrets["supabase"]["url"]
+key = st.secrets["supabase"]["key"]
+supabase: Client = create_client(url, key)
 
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days'],
-    cookie_path="/",
-    cookie_secure=True,
-    cookie_https_only=True
-)
+# Se ainda não houver sessão ativa
+if "session" not in st.session_state:
+    st.session_state.session = None
 
+st.title("🔐 Login - Dashboard Acadêmico")
 
-authenticator.login('main')
+if st.session_state.session is None:
+    aba_login = st.radio("Escolha o método de login:", ["Email e Senha", "Google"])
 
-if st.session_state["authentication_status"]:
+    if aba_login == "Email e Senha":
+        email = st.text_input("Email")
+        password = st.text_input("Senha", type="password")
+
+        if st.button("Entrar"):
+            try:
+                response = supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password
+                })
+                st.session_state.session = response.session
+                st.success("Login realizado com sucesso!")
+                st.rerun()
+            except Exception as e:
+                st.error("Erro ao fazer login. Verifique email/senha.")
+    else:
+        oauth = supabase.auth.sign_in_with_oauth({"provider": "google"})
+        st.link_button("Entrar com Google", oauth.url)
+else:
+    user = st.session_state.session.user
+    st.sidebar.success(f"Bem-vindo(a), {user.email}!")
+
+    if st.sidebar.button("Sair"):
+        supabase.auth.sign_out()
+        st.session_state.session = None
+        st.rerun()
+
+if st.session_state.session is not None:
     # --- O DASHBOARD SÓ É RENDERIZADO SE O LOGIN FOR BEM-SUCEDIDO ---
 
     # ========================
@@ -265,15 +277,3 @@ if st.session_state["authentication_status"]:
     # RODAPÉ
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
-
-elif st.session_state["authentication_status"] is False:
-    st.error('Usuário ou senha incorreta')
-elif st.session_state["authentication_status"] is None:
-    st.warning('Por favor, insira seu usuário e senha')
-
-
-
-
-
-
-
