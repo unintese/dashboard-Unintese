@@ -203,16 +203,46 @@ if st.session_state["authentication_status"]:
         st.subheader("📍 Distribuição de alunos por cidade")
         df_cidade = df_filtrado.groupby(["Chave", "Cidade", "Estado", "Latitude", "Longitude"]).size().reset_index(name="Qtd")
     
-        df_cidade["Latitude"] = pd.to_numeric(df_cidade["Latitude"], errors='coerce')
-        df_cidade["Longitude"] = pd.to_numeric(df_cidade["Longitude"], errors='coerce')
+        # --- INÍCIO DA NOVA CORREÇÃO ---
     
-        df_cidade = df_cidade.dropna(subset=["Latitude", "Longitude"])
-
-        df_cidade = df_cidade[
-            (df_cidade["Latitude"] >= -90) & (df_cidade["Latitude"] <= 90) &
-            (df_cidade["Longitude"] >= -180) & (df_cidade["Longitude"] <= 180)
-        ]
+        # Função para limpar o formato das coordenadas
+        def clean_coord(coord):
+            # Converte para string para garantir que podemos manipular
+            coord_str = str(coord).strip()
+            # Divide a string pelo ponto
+            parts = coord_str.split('.')
+            # Se tiver mais de um ponto, remonta o número no formato correto
+            # Ex: ['-9', '754', '866'] -> '-9.754866'
+            if len(parts) > 1:
+                coord_str = parts[0] + '.' + ''.join(parts[1:])
+            return coord_str
     
+        # Verifica se as colunas de coordenadas existem antes de processá-las
+        if "Latitude" in df_cidade.columns and "Longitude" in df_cidade.columns:
+            # 1. Aplica a função de limpeza para corrigir a formatação
+            df_cidade["Latitude"] = df_cidade["Latitude"].apply(clean_coord)
+            df_cidade["Longitude"] = df_cidade["Longitude"].apply(clean_coord)
+    
+            # 2. Converte as colunas limpas para formato numérico
+            df_cidade["Latitude"] = pd.to_numeric(df_cidade["Latitude"], errors='coerce')
+            df_cidade["Longitude"] = pd.to_numeric(df_cidade["Longitude"], errors='coerce')
+    
+            # 3. Remove quaisquer linhas que não puderam ser convertidas
+            df_cidade = df_cidade.dropna(subset=["Latitude", "Longitude"])
+    
+            # 4. Filtra os dados para garantir que estejam dentro do intervalo geográfico válido
+            df_cidade = df_cidade[
+                (df_cidade["Latitude"] >= -90) & (df_cidade["Latitude"] <= 90) &
+                (df_cidade["Longitude"] >= -180) & (df_cidade["Longitude"] <= 180)
+            ]
+        else:
+            st.error("Colunas 'Latitude' e/ou 'Longitude' não encontradas.")
+            # Cria um DataFrame vazio para evitar erros posteriores
+            df_cidade = pd.DataFrame(columns=df_cidade.columns)
+    
+        # --- FIM DA NOVA CORREÇÃO ---
+    
+        # O mapa só será exibido se houver dados válidos após a limpeza e filtragem
         if not df_cidade.empty:
             mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
                                             hover_name="Cidade",
@@ -229,7 +259,7 @@ if st.session_state["authentication_status"]:
                                       font_color=COR_TEXTO)
             st.plotly_chart(mapa_bolhas, use_container_width=True)
         else:
-            st.warning("Não há dados de geolocalização válidos para exibir no mapa com os filtros selecionados.")
+            st.warning("Não há dados de geolocalização válidos para exibir no mapa com os filtros selecionados. Por favor, verifique o formato e os valores das coordenadas na sua planilha de origem.")
     
         st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
         top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
@@ -285,6 +315,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
