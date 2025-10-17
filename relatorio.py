@@ -38,7 +38,7 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days'],
     cookie_path="/",
     cookie_secure=True,
-    cookie_http_only=True
+    cookie_https_only=True
 )
 
 
@@ -270,6 +270,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
