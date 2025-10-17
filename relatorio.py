@@ -30,9 +30,12 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-# A linha abaixo renderiza o formulário de login
-authenticator.login()
+# A chamada de login agora é feita dentro da barra lateral para um visual mais limpo
+with st.sidebar:
+    st.image("logo-unintese-simples.png", use_column_width=True)
+    name, authentication_status, username = authenticator.login('Login', 'main')
 
+# --- ESTA É A LÓGICA PRINCIPAL CORRIGIDA ---
 if st.session_state["authentication_status"]:
     # --- O DASHBOARD SÓ É RENDERIZADO SE O LOGIN FOR BEM-SUCEDIDO ---
 
@@ -259,5 +262,6 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
