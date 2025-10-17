@@ -14,7 +14,6 @@ st.set_page_config(page_title="Dashboard Acadêmica", page_icon="logo-unintese-s
 # ========================
 # LÓGICA DE AUTENTICAÇÃO
 # ========================
-# (Seu código de autenticação permanece o mesmo)
 # Conecta ao Supabase usando os secrets do Streamlit Cloud
 url = st.secrets["supabase"]["url"]
 key = st.secrets["supabase"]["key"]
@@ -277,3 +276,4 @@ if st.session_state.session is not None:
     # RODAPÉ
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+
