@@ -223,7 +223,8 @@ if st.session_state["authentication_status"]:
         top_cidades = top_cidades.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
         fig_top_cidades = px.bar(top_cidades, x="Qtd Alunos", y="Cidade", orientation="h",
                                  text="Qtd Alunos", color_discrete_sequence=[COR_ROXO])
-        fig_top_cidades.update_traces(texttemplate='%{text:,.0f}'.replace(',', '.'), textfont=dict(color=COR_TEXTO)) # Corrigido
+        # A CORREÇÃO ESTÁ AQUI: removi o .replace()
+        fig_top_cidades.update_traces(texttemplate='%{text:,}', textfont=dict(color=COR_TEXTO))
         fig_top_cidades.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
@@ -248,7 +249,7 @@ if st.session_state["authentication_status"]:
                                    plot_bgcolor=COR_FUNDO,
                                    font_color=COR_TEXTO,
                                    hoverlabel=dict(bgcolor=COR_ROXO, font_size=14, font_color=COR_TEXTO))
-        mapa_estados.update_traces(hovertemplate='Estado: %{location}<br>Qtd: %{z:,.0f}'.replace(',', '.'))
+        mapa_estados.update_traces(hovertemplate='Estado: %{location}<br>Qtd: %{z:,}')
         st.plotly_chart(mapa_estados, use_container_width=True)
     
         st.subheader(f"🗺️ Top {top_n_estados} Estados com mais alunos")
@@ -256,7 +257,8 @@ if st.session_state["authentication_status"]:
         top_estados = top_estados.sort_values(by="Qtd Alunos", ascending=False).head(top_n_estados)
         fig_top_estados = px.bar(top_estados, x="Qtd Alunos", y="Estado", orientation="h",
                                  text="Qtd Alunos", color_discrete_sequence=[COR_LARANJA])
-        fig_top_estados.update_traces(texttemplate='%{text:,.0f}'.replace(',', '.'), textfont=dict(color=COR_TEXTO)) # Corrigido
+        # A CORREÇÃO ESTÁ AQUI: removi o .replace()
+        fig_top_estados.update_traces(texttemplate='%{text:,}', textfont=dict(color=COR_TEXTO))
         fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
@@ -272,6 +274,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
