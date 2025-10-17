@@ -13,6 +13,7 @@ st.set_page_config(page_title="Dashboard Acadêmica", page_icon="logo-unintese-s
 # ========================
 # LÓGICA DE AUTENTICAÇÃO
 # ========================
+# (Seu código de autenticação permanece o mesmo)
 config = {
     'credentials': {
         'usernames': {}
@@ -51,44 +52,48 @@ if st.session_state["authentication_status"]:
     COR_TEXTO = "#FFFFFF"
 
     # ========================
-    # CARREGAR DADOS DO GOOGLE SHEETS
+    # FUNÇÃO DE CACHE PARA CARREGAR DADOS
     # ========================
-    try:
-        creds_dict = st.secrets['gcp_service_account']
-        sa = gspread.service_account_from_dict(creds_dict)
-        spreadsheet = sa.open('basededados')
-        worksheet_base = spreadsheet.worksheet('basededados')
-        worksheet_coords = spreadsheet.worksheet('coordenadas')
+    @st.cache_data(ttl=600)
+    def carregar_dados():
+        try:
+            creds_dict = st.secrets['gcp_service_account']
+            sa = gspread.service_account_from_dict(creds_dict)
+            spreadsheet = sa.open('basededados')
+            worksheet_base = spreadsheet.worksheet('basededados')
+            worksheet_coords = spreadsheet.worksheet('coordenadas')
 
-        dados = get_as_dataframe(worksheet_base, header=0)
-        coordenadas = get_as_dataframe(worksheet_coords, header=0)
+            dados = get_as_dataframe(worksheet_base, header=0)
+            coordenadas = get_as_dataframe(worksheet_coords, header=0)
 
-        dados.dropna(axis=1, how='all', inplace=True)
-        coordenadas.dropna(axis=1, how='all', inplace=True)
+            dados.dropna(axis=1, how='all', inplace=True)
+            coordenadas.dropna(axis=1, how='all', inplace=True)
 
-    except Exception as e:
-        st.error(f"Erro ao carregar dados do Google Sheets: {e}")
-        st.info("Verifique as credenciais 'gcp_service_account' e os nomes da planilha/abas.")
+            # NORMALIZAR CHAVES E JUNTAR DADOS
+            if "Cidade" in dados.columns and "Estado" in dados.columns and "Chave" in coordenadas.columns:
+                dados["Chave"] = (dados["Cidade"].astype(str).str.strip().str.upper() + " - " + dados["Estado"].astype(str).str.strip().str.upper())
+                coordenadas["Chave"] = coordenadas["Chave"].astype(str).str.strip().str.upper()
+                dados = dados.merge(coordenadas, on="Chave", how="left")
+            else:
+                st.error("Colunas essenciais ('Cidade', 'Estado', 'Chave') não encontradas.")
+                return None
+
+            # COLUNAS COMO STRING
+            for col in ["Estado", "Cidade", "Tipo", "Situacao do contrato", "Curso"]:
+                if col in dados.columns:
+                    dados[col] = dados[col].astype(str)
+            
+            return dados
+        except Exception as e:
+            st.error(f"Erro ao carregar dados do Google Sheets: {e}")
+            st.info("Verifique as credenciais 'gcp_service_account' e os nomes da planilha/abas.")
+            return None
+
+    dados = carregar_dados()
+
+    if dados is None:
         st.stop()
-
-    # ========================
-    # NORMALIZAR CHAVES E JUNTAR DADOS
-    # ========================
-    if "Cidade" in dados.columns and "Estado" in dados.columns and "Chave" in coordenadas.columns:
-        dados["Chave"] = (dados["Cidade"].astype(str).str.strip().str.upper() + " - " + dados["Estado"].astype(str).str.strip().str.upper())
-        coordenadas["Chave"] = coordenadas["Chave"].astype(str).str.strip().str.upper()
-        dados = dados.merge(coordenadas, on="Chave", how="left")
-    else:
-        st.error("Colunas essenciais ('Cidade', 'Estado', 'Chave') não encontradas.")
-        st.stop()
-
-    # ========================
-    # COLUNAS COMO STRING
-    # ========================
-    for col in ["Estado", "Cidade", "Tipo", "Situacao do contrato", "Curso"]:
-        if col in dados.columns:
-            dados[col] = dados[col].astype(str)
-
+        
     # ========================
     # CSS E ESTILOS
     # ========================
@@ -102,15 +107,7 @@ if st.session_state["authentication_status"]:
         .stTable tbody tr td {{ color: {COR_TEXTO}; background-color: {COR_FUNDO}; }}
         .stTabs [role="tablist"] button {{ color: {COR_TEXTO}; }}
         h2, h3 {{ color: {COR_TEXTO}; }}
-        header {{
-            visibility: hidden;
-        }}
-        ._profileContainer_gzau3_53 {{
-            display: none !important;
-        }}
-        ._container_gzau3_1 _viewerBadge_nim44_23 {{
-            display: none !important;
-        }}
+        header {{ visibility: hidden; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -159,8 +156,8 @@ if st.session_state["authentication_status"]:
     # ========================
     # KPIs
     # ========================
-    total_alunos = df_filtrado.shape[0]
-    alunos_ativos = df_filtrado[df_filtrado['Situacao do contrato'].str.upper().isin(['VIGENTE','TRANCADO'])].shape[0]
+    total_alunos = len(df_filtrado)
+    alunos_ativos = len(df_filtrado[df_filtrado['Situacao do contrato'].str.upper().isin(['VIGENTE','TRANCADO'])])
     percent_ativos = round((alunos_ativos / total_alunos * 100),1) if total_alunos > 0 else 0
     total_cidades = df_filtrado['Cidade'].nunique()
     total_estados = df_filtrado['Estado'].nunique()
@@ -182,124 +179,90 @@ if st.session_state["authentication_status"]:
     # ABA GERAL
     # ========================
     with tab_geral:
-        st.subheader("📌 Total de Alunos por Situação do Contrato")
-        tabela_situacao = df_filtrado.groupby("Situacao do contrato").size().reset_index(name="Qtd Alunos")
-        tabela_situacao["Qtd Alunos"] = tabela_situacao["Qtd Alunos"].apply(lambda x: f"{x:,}".replace(",", "."))
-        st.table(tabela_situacao)
-    
-        st.subheader("🎓 Total de Alunos por Curso")
-        tabela_cursos = df_filtrado.groupby("Curso").size().reset_index(name="Qtd Alunos")
-        tabela_cursos["Qtd Alunos"] = tabela_cursos["Qtd Alunos"].apply(lambda x: f"{x:,}".replace(",", "."))
-        st.table(tabela_cursos)
-    
-        # Download dos dados filtrados
-        csv = df_filtrado.to_csv(index=False, sep=';').encode('utf-8')
-        st.download_button(label="📥 Download dos dados filtrados", data=csv, file_name='dados_filtrados.csv', mime='text/csv')
+        if df_filtrado.empty:
+            st.warning("Nenhum aluno encontrado para os filtros selecionados.")
+        else:
+            st.subheader("📌 Total de Alunos por Situação do Contrato")
+            tabela_situacao = df_filtrado.groupby("Situacao do contrato").size().reset_index(name="Qtd Alunos")
+            tabela_situacao["Qtd Alunos"] = tabela_situacao["Qtd Alunos"].apply(lambda x: f"{x:,}".replace(",", "."))
+            st.table(tabela_situacao)
+        
+            st.subheader("🎓 Total de Alunos por Curso")
+            tabela_cursos = df_filtrado.groupby("Curso").size().reset_index(name="Qtd Alunos")
+            tabela_cursos["Qtd Alunos"] = tabela_cursos["Qtd Alunos"].apply(lambda x: f"{x:,}".replace(",", "."))
+            st.table(tabela_cursos)
+        
+            csv = df_filtrado.to_csv(index=False, sep=';').encode('utf-8')
+            st.download_button(label="📥 Download dos dados filtrados", data=csv, file_name='dados_filtrados.csv', mime='text/csv')
 
     # ========================
     # ABA CIDADES
     # ========================
     with tab_cidade:
-        st.subheader("📍 Distribuição de alunos por cidade")
-        df_cidade = df_filtrado.groupby(["Chave", "Cidade", "Estado", "Latitude", "Longitude"]).size().reset_index(name="Qtd")
-        df_cidade = df_cidade.dropna(subset=["Latitude","Longitude"])
-        mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
-                                        hover_name="Cidade", hover_data={"Estado":True,"Qtd":True},
-                                        color="Qtd", color_continuous_scale=[COR_LARANJA, COR_ROXO],
-                                        size_max=35, zoom=3, height=600)
-        mapa_bolhas.update_layout(mapbox_style="open-street-map", margin={"r":0,"t":0,"l":0,"b":0},
-                                  paper_bgcolor=COR_FUNDO, plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
-        st.plotly_chart(mapa_bolhas, use_container_width=True)
-    
-        st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
-        top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
-        top_cidades = top_cidades.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
-        fig_top_cidades = px.bar(top_cidades, x="Qtd Alunos", y="Cidade", orientation="h",
-                                 color_discrete_sequence=[COR_ROXO])
-        fig_top_cidades.update_traces(texttemplate='%{x:,}', textposition='auto', textfont=dict(color=COR_TEXTO))
-        fig_top_cidades.update_layout(yaxis={'categoryorder':'total ascending'}, paper_bgcolor=COR_FUNDO,
-                                      plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
-        st.plotly_chart(fig_top_cidades, use_container_width=True)
-
-        # --- CÓDIGO DE DIAGNÓSTICO ---
-        st.subheader("🔍 Diagnóstico: Verificando os Dados da Aba Cidade")
-        st.write("50 primeiras linhas dos dados filtrados:")
-        st.dataframe(df_filtrado.head(50))
-        st.write(f"Dados agrupados para o gráfico 'Top {top_n_cidades} Cidades':")
-        st.dataframe(top_cidades)
+        if df_filtrado.empty:
+            st.warning("Nenhum aluno encontrado para os filtros selecionados.")
+        else:
+            st.subheader("📍 Distribuição de alunos por cidade")
+            df_cidade = df_filtrado.groupby(["Chave", "Cidade", "Estado", "Latitude", "Longitude"]).size().reset_index(name="Qtd")
+            df_cidade = df_cidade.dropna(subset=["Latitude","Longitude"])
+            
+            mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
+                                            hover_name="Cidade", hover_data={"Estado":True,"Qtd":True},
+                                            color="Qtd", color_continuous_scale=[COR_LARANJA, COR_ROXO],
+                                            size_max=35, zoom=3, height=600)
+            mapa_bolhas.update_layout(mapbox_style="open-street-map", margin={"r":0,"t":0,"l":0,"b":0},
+                                      paper_bgcolor=COR_FUNDO, plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
+            st.plotly_chart(mapa_bolhas, use_container_width=True)
+        
+            st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
+            top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
+            top_cidades = top_cidades.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
+            
+            fig_top_cidades = px.bar(top_cidades, x="Qtd Alunos", y="Cidade", orientation="h",
+                                     color_discrete_sequence=[COR_ROXO])
+            fig_top_cidades.update_traces(texttemplate='%{x:,}', textposition='outside', textfont=dict(color=COR_TEXTO))
+            fig_top_cidades.update_layout(yaxis={'categoryorder':'total ascending'}, paper_bgcolor=COR_FUNDO,
+                                          plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
+            st.plotly_chart(fig_top_cidades, use_container_width=True)
 
     # ========================
     # ABA ESTADOS
     # ========================
     with tab_estado:
-        st.subheader("🗺️ Distribuição de alunos por estado")
-        df_estado = df_filtrado.groupby("Estado").size().reset_index(name="Qtd")
-        mapa_estados = px.choropleth(df_estado, geojson="https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson",
-                                     locations="Estado", featureidkey="properties.sigla", color="Qtd",
-                                     color_continuous_scale=[COR_LARANJA, COR_ROXO],
-                                     scope="south america", height=600)
-        mapa_estados.update_geos(fitbounds="locations", visible=False)
-        mapa_estados.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor=COR_FUNDO,
-                                   plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO,
-                                   hoverlabel=dict(bgcolor=COR_ROXO, font_size=14, font_color=COR_TEXTO))
-        mapa_estados.update_traces(hovertemplate='Estado: %{location}<br>Qtd: %{z:,}')
-        st.plotly_chart(mapa_estados, use_container_width=True)
-    
-        st.subheader(f"🗺️ Top {top_n_estados} Estados com mais alunos")
-        top_estados = df_filtrado.groupby("Estado").size().reset_index(name="Qtd Alunos")
-        top_estados = top_estados.sort_values(by="Qtd Alunos", ascending=False).head(top_n_estados)
-        fig_top_estados = px.bar(top_estados, x="Qtd Alunos", y="Estado", orientation="h",
-                                 color_discrete_sequence=[COR_LARANJA])
-        fig_top_estados.update_traces(texttemplate='%{x:,}', textposition='auto', textfont=dict(color=COR_TEXTO))
-        fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'}, paper_bgcolor=COR_FUNDO,
-                                      plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
-        st.plotly_chart(fig_top_estados, use_container_width=True)
+        if df_filtrado.empty:
+            st.warning("Nenhum aluno encontrado para os filtros selecionados.")
+        else:
+            st.subheader("🗺️ Distribuição de alunos por estado")
+            df_estado = df_filtrado.groupby("Estado").size().reset_index(name="Qtd")
+            
+            mapa_estados = px.choropleth(df_estado, geojson="https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson",
+                                         locations="Estado", featureidkey="properties.sigla", color="Qtd",
+                                         color_continuous_scale=[COR_LARANJA, COR_ROXO],
+                                         scope="south america", height=600)
+            mapa_estados.update_geos(fitbounds="locations", visible=False)
+            mapa_estados.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor=COR_FUNDO,
+                                       plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO,
+                                       hoverlabel=dict(bgcolor=COR_ROXO, font_size=14, font_color=COR_TEXTO))
+            mapa_estados.update_traces(hovertemplate='Estado: %{location}<br>Qtd: %{z:,}')
+            st.plotly_chart(mapa_estados, use_container_width=True)
         
-        # --- CÓDIGO DE DIAGNÓSTICO ---
-        st.subheader("🔍 Diagnóstico: Verificando os Dados da Aba Estado")
-        st.write(f"Dados agrupados para o gráfico 'Top {top_n_estados} Estados':")
-        st.dataframe(top_estados)
+            st.subheader(f"🗺️ Top {top_n_estados} Estados com mais alunos")
+            top_estados = df_filtrado.groupby("Estado").size().reset_index(name="Qtd Alunos")
+            top_estados = top_estados.sort_values(by="Qtd Alunos", ascending=False).head(top_n_estados)
+            
+            fig_top_estados = px.bar(top_estados, x="Qtd Alunos", y="Estado", orientation="h",
+                                     color_discrete_sequence=[COR_LARANJA])
+            fig_top_estados.update_traces(texttemplate='%{x:,}', textposition='outside', textfont=dict(color=COR_TEXTO))
+            fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'}, paper_bgcolor=COR_FUNDO,
+                                          plot_bgcolor=COR_FUNDO, font_color=COR_TEXTO)
+            st.plotly_chart(fig_top_estados, use_container_width=True)
     
-        # ========================
-        # RODAPÉ
-        # ========================
-        st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+    # ========================
+    # RODAPÉ
+    # ========================
+    st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
 
 elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
