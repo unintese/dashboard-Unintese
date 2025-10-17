@@ -35,12 +35,17 @@ if st.session_state.user is None:
         response = supabase.table("users").select("*").eq("email", email).execute()
         if response.data:
             user = response.data[0]
-            if bcrypt.checkpw(password.encode(), user["password"].encode()):
-                st.session_state.user = user
-                st.success("Login realizado!")
-                st.experimental_rerun()
-            else:
-                st.error("Senha incorreta")
+            if st.button("Entrar"):
+                # Chama uma função SQL que valida o login
+                response = supabase.rpc("login_user", {"email_input": email, "password_input": password}).execute()
+                if response.data:
+                    user = response.data[0]
+                    st.session_state.user = user
+                    st.success("Login realizado!")
+                    st.experimental_rerun()
+                else:
+                    st.error("Email ou senha incorretos")
+
         else:
             st.error("Usuário não encontrado")
 
@@ -134,7 +139,7 @@ if st.session_state.get("session") is not None:
         LOGO_EMPRESA = "logo-unintese-simples.png"
         st.image(LOGO_EMPRESA, use_container_width=True)
         
-        st.write(f'Bem-vindo(a), *{st.session_state["name"]}*')
+        st.write(f'Bem-vindo(a), *{st.session_state["user"]["name"]}*')
         authenticator.logout('Logout')
         st.markdown("---")
 
@@ -271,6 +276,7 @@ if st.session_state.get("session") is not None:
     # RODAPÉ
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+
 
 
 
