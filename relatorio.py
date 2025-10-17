@@ -202,21 +202,34 @@ if st.session_state["authentication_status"]:
     with tab_cidade:
         st.subheader("📍 Distribuição de alunos por cidade")
         df_cidade = df_filtrado.groupby(["Chave", "Cidade", "Estado", "Latitude", "Longitude"]).size().reset_index(name="Qtd")
-        df_cidade = df_cidade.dropna(subset=["Latitude","Longitude"])
-        mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
-                                        hover_name="Cidade",
-                                        hover_data={"Estado":True,"Qtd":True},
-                                        color="Qtd",
-                                        color_continuous_scale=[COR_LARANJA, COR_ROXO],
-                                        size_max=35,
-                                        zoom=3,
-                                        height=600)
-        mapa_bolhas.update_layout(mapbox_style="open-street-map",
-                                  margin={"r":0,"t":0,"l":0,"b":0},
-                                  paper_bgcolor=COR_FUNDO,
-                                  plot_bgcolor=COR_FUNDO,
-                                  font_color=COR_TEXTO)
-        st.plotly_chart(mapa_bolhas, use_container_width=True)
+    
+        df_cidade["Latitude"] = pd.to_numeric(df_cidade["Latitude"], errors='coerce')
+        df_cidade["Longitude"] = pd.to_numeric(df_cidade["Longitude"], errors='coerce')
+    
+        df_cidade = df_cidade.dropna(subset=["Latitude", "Longitude"])
+
+        df_cidade = df_cidade[
+            (df_cidade["Latitude"] >= -90) & (df_cidade["Latitude"] <= 90) &
+            (df_cidade["Longitude"] >= -180) & (df_cidade["Longitude"] <= 180)
+        ]
+    
+        if not df_cidade.empty:
+            mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
+                                            hover_name="Cidade",
+                                            hover_data={"Estado":True,"Qtd":True},
+                                            color="Qtd",
+                                            color_continuous_scale=[COR_LARANJA, COR_ROXO],
+                                            size_max=35,
+                                            zoom=3,
+                                            height=600)
+            mapa_bolhas.update_layout(mapbox_style="open-street-map",
+                                      margin={"r":0,"t":0,"l":0,"b":0},
+                                      paper_bgcolor=COR_FUNDO,
+                                      plot_bgcolor=COR_FUNDO,
+                                      font_color=COR_TEXTO)
+            st.plotly_chart(mapa_bolhas, use_container_width=True)
+        else:
+            st.warning("Não há dados de geolocalização válidos para exibir no mapa com os filtros selecionados.")
     
         st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
         top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
@@ -272,6 +285,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
