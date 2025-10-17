@@ -16,18 +16,24 @@ st.set_page_config(page_title="Dashboard Acadêmica", page_icon="logo-unintese-s
 # LÓGICA DE AUTENTICAÇÃO
 # ========================
 # ========================
+# ========================
 # CONEXÃO COM SUPABASE
+# ========================
 url = st.secrets["supabase"]["url"]
 key = st.secrets["supabase"]["key"]
 supabase = create_client(url, key)
 
+# ========================
 # SESSÃO
+# ========================
 if "user" not in st.session_state:
     st.session_state.user = None
 
 st.title("🔐 Login - Dashboard Acadêmico")
 
+# ========================
 # LOGIN
+# ========================
 if st.session_state.user is None:
     email = st.text_input("Email")
     password = st.text_input("Senha", type="password")
@@ -49,9 +55,11 @@ if st.session_state.user is None:
         except Exception as e:
             st.error(f"Erro no login: {e}")
 
+# ========================
 # DASHBOARD
+# ========================
 else:
-    st.sidebar.success(f"Bem-vindo(a), {st.session_state.user['name']}!")
+    st.sidebar.success(f"Bem-vindo(a), {st.session_state.user['user_name']}!")
     if st.sidebar.button("Sair"):
         st.session_state.user = None
         st.experimental_rerun()
@@ -137,8 +145,7 @@ else:
         LOGO_EMPRESA = "logo-unintese-simples.png"
         st.image(LOGO_EMPRESA, use_container_width=True)
         
-        st.write(f'Bem-vindo(a), *{st.session_state["user"]["name"]}*')
-        authenticator.logout('Logout')
+        st.write(f'Bem-vindo(a), *{st.session_state.user["user_name"]}*')
         st.markdown("---")
 
         st.sidebar.markdown(f"<div style='padding:10px; border-radius:5px'>", unsafe_allow_html=True)
@@ -274,6 +281,7 @@ else:
     # RODAPÉ
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+
 
 
 
