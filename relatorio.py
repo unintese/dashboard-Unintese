@@ -245,9 +245,16 @@ if st.session_state["authentication_status"]:
         st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
         top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
         top_cidades = top_cidades.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
+        
+        # Formata os números como texto ANTES de criar o gráfico
+        top_cidades['Qtd Alunos Formatado'] = top_cidades['Qtd Alunos'].apply(lambda x: f'{x:,}'.replace(',', '.'))
+        
         fig_top_cidades = px.bar(top_cidades, x="Qtd Alunos", y="Cidade", orientation="h",
-                                 text="Qtd Alunos", color_discrete_sequence=[COR_ROXO])
-        fig_top_cidades.update_traces(texttemplate='%{text:,s}', textfont=dict(color=COR_TEXTO))
+                                 text='Qtd Alunos Formatado',  # Usa a nova coluna formatada
+                                 color_discrete_sequence=[COR_ROXO])
+        
+        fig_top_cidades.update_traces(textfont=dict(color=COR_TEXTO)) # Removemos o texttemplate
+        
         fig_top_cidades.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
@@ -259,6 +266,7 @@ if st.session_state["authentication_status"]:
     with tab_estado:
         st.subheader("🗺️ Distribuição de alunos por estado")
         df_estado = df_filtrado.groupby("Estado").size().reset_index(name="Qtd")
+    
         mapa_siglas = {
             'ACRE': 'AC', 'ALAGOAS': 'AL', 'AMAPÁ': 'AP', 'AMAZONAS': 'AM', 'BAHIA': 'BA',
             'CEARÁ': 'CE', 'DISTRITO FEDERAL': 'DF', 'ESPÍRITO SANTO': 'ES', 'GOIÁS': 'GO',
@@ -269,28 +277,46 @@ if st.session_state["authentication_status"]:
             'SERGIPE': 'SE', 'TOCANTINS': 'TO'
         }
         df_estado['Sigla'] = df_estado['Estado'].str.upper().map(mapa_siglas)
-        
+    
+        # Remove estados que não foram mapeados para uma sigla (caso haja algum)
+        df_estado.dropna(subset=['Sigla'], inplace=True)
+    
         mapa_estados = px.choropleth(df_estado,
                                      geojson="https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson",
-                                     locations="Estado", featureidkey="properties.sigla", color="Qtd",
+                                     locations="Sigla",  # <-- CORRIGIDO AQUI
+                                     featureidkey="properties.sigla",
+                                     color="Qtd",
+                                     hover_name="Estado", # Para mostrar o nome completo
                                      color_continuous_scale=[COR_LARANJA, COR_ROXO],
                                      scope="south america",
                                      height=600)
+    
         mapa_estados.update_geos(fitbounds="locations", visible=False)
+    
         mapa_estados.update_layout(margin={"r":0,"t":0,"l":0,"b":0},
                                    paper_bgcolor=COR_FUNDO,
                                    plot_bgcolor=COR_FUNDO,
                                    font_color=COR_TEXTO,
                                    hoverlabel=dict(bgcolor=COR_ROXO, font_size=14, font_color=COR_TEXTO))
-        mapa_estados.update_traces(hovertemplate='Estado: %{location}<br>Qtd: %{z:,}'.replace(',', '.'))
+    
+        # Template de hover corrigido
+        mapa_estados.update_traces(hovertemplate='<b>%{hover_name}</b><br>Qtd: %{z:,}')
+    
         st.plotly_chart(mapa_estados, use_container_width=True)
     
         st.subheader(f"🗺️ Top {top_n_estados} Estados com mais alunos")
         top_estados = df_filtrado.groupby("Estado").size().reset_index(name="Qtd Alunos")
         top_estados = top_estados.sort_values(by="Qtd Alunos", ascending=False).head(top_n_estados)
+        
+        # Formata os números como texto ANTES de criar o gráfico
+        top_estados['Qtd Alunos Formatado'] = top_estados['Qtd Alunos'].apply(lambda x: f'{x:,}'.replace(',', '.'))
+        
         fig_top_estados = px.bar(top_estados, x="Qtd Alunos", y="Estado", orientation="h",
-                                 text="Qtd Alunos", color_discrete_sequence=[COR_LARANJA])
-        fig_top_estados.update_traces(texttemplate='%{text:,s}', textfont=dict(color=COR_TEXTO))
+                                 text='Qtd Alunos Formatado', # Usa a nova coluna formatada
+                                 color_discrete_sequence=[COR_LARANJA])
+        
+        fig_top_estados.update_traces(textfont=dict(color=COR_TEXTO)) # Removemos o texttemplate
+        
         fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
@@ -306,6 +332,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
