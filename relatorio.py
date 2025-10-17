@@ -49,7 +49,7 @@ else:
         st.session_state.user = None
         st.experimental_rerun()
 
-if st.session_state.session is not None:
+if st.session_state.get("session") is not None:
     # --- O DASHBOARD SÓ É RENDERIZADO SE O LOGIN FOR BEM-SUCEDIDO ---
 
     # ========================
@@ -270,5 +270,6 @@ if st.session_state.session is not None:
     # RODAPÉ
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+
 
 
