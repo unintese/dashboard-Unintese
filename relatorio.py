@@ -264,12 +264,13 @@ if st.session_state["authentication_status"]:
     # ========================
     # RODAPÉ
     # ========================
-    st.markdown(f"<p style='text-align:center; margin-top: 5rem; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align:center; margin-top: 10rem; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
 
 elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
