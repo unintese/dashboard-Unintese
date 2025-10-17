@@ -221,10 +221,15 @@ if st.session_state["authentication_status"]:
         st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
         top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
         top_cidades = top_cidades.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
+        
+        # --- INÍCIO DA CORREÇÃO ---
         fig_top_cidades = px.bar(top_cidades, x="Qtd Alunos", y="Cidade", orientation="h",
-                                 text="Qtd Alunos", color_discrete_sequence=[COR_ROXO])
-        # A CORREÇÃO ESTÁ AQUI: removi o .replace()
-        fig_top_cidades.update_traces(texttemplate='%{text:,}', textfont=dict(color=COR_TEXTO))
+                                 color_discrete_sequence=[COR_ROXO])
+        
+        # Usamos %{x:,} para formatar o valor do eixo X (Qtd Alunos)
+        fig_top_cidades.update_traces(texttemplate='%{x:,}', textposition='auto', textfont=dict(color=COR_TEXTO))
+        # --- FIM DA CORREÇÃO ---
+        
         fig_top_cidades.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
@@ -249,16 +254,26 @@ if st.session_state["authentication_status"]:
                                    plot_bgcolor=COR_FUNDO,
                                    font_color=COR_TEXTO,
                                    hoverlabel=dict(bgcolor=COR_ROXO, font_size=14, font_color=COR_TEXTO))
+        
+        # --- INÍCIO DA CORREÇÃO NO MAPA ---
+        # Removemos o .replace() que estava causando erro
         mapa_estados.update_traces(hovertemplate='Estado: %{location}<br>Qtd: %{z:,}')
+        # --- FIM DA CORREÇÃO NO MAPA ---
+        
         st.plotly_chart(mapa_estados, use_container_width=True)
     
         st.subheader(f"🗺️ Top {top_n_estados} Estados com mais alunos")
         top_estados = df_filtrado.groupby("Estado").size().reset_index(name="Qtd Alunos")
         top_estados = top_estados.sort_values(by="Qtd Alunos", ascending=False).head(top_n_estados)
+        
+        # --- INÍCIO DA CORREÇÃO NO GRÁFICO ---
         fig_top_estados = px.bar(top_estados, x="Qtd Alunos", y="Estado", orientation="h",
-                                 text="Qtd Alunos", color_discrete_sequence=[COR_LARANJA])
-        # A CORREÇÃO ESTÁ AQUI: removi o .replace()
-        fig_top_estados.update_traces(texttemplate='%{text:,}', textfont=dict(color=COR_TEXTO))
+                                 color_discrete_sequence=[COR_LARANJA])
+        
+        # Usamos %{x:,} para formatar o valor do eixo X (Qtd Alunos)
+        fig_top_estados.update_traces(texttemplate='%{x:,}', textposition='auto', textfont=dict(color=COR_TEXTO))
+        # --- FIM DA CORREÇÃO NO GRÁFICO ---
+    
         fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
@@ -274,6 +289,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
