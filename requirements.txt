@@ -6,4 +6,5 @@ gspread
 gspread-dataframe
 streamlit-authenticator
 supabase
+bcrypt
 
