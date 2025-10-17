@@ -165,19 +165,19 @@ if st.session_state["authentication_status"]:
     total_cidades = df_filtrado['Cidade'].nunique()
     total_estados = df_filtrado['Estado'].nunique()
     total_cursos = df_filtrado['Curso'].nunique()
-
+    
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total Alunos", f"{total_alunos:,}".replace(',', '.'))
     col2.metric("Cidades", f"{total_cidades:,}".replace(',', '.'))
     col3.metric("Estados", f"{total_estados:,}".replace(',', '.'))
     col4.metric("Alunos Ativos", f"{alunos_ativos:,}".replace(',', '.'), f"{percent_ativos}% do total")
     col5.metric("Cursos", f"{total_cursos:,}".replace(',', '.'))
-
+    
     # ========================
     # ABAS
     # ========================
     tab_geral, tab_cidade, tab_estado = st.tabs(["📊 Geral", "📍 Por Cidade", "🗺️ Por Estado"])
-    
+
     # ========================
     # ABA GERAL
     # ========================
@@ -195,143 +195,84 @@ if st.session_state["authentication_status"]:
         # Download dos dados filtrados
         csv = df_filtrado.to_csv(index=False, sep=';').encode('utf-8')
         st.download_button(label="📥 Download dos dados filtrados", data=csv, file_name='dados_filtrados.csv', mime='text/csv')
-    
+
     # ========================
     # ABA CIDADES
     # ========================
     with tab_cidade:
         st.subheader("📍 Distribuição de alunos por cidade")
-        
-        # Agrupa os dados como antes
         df_cidade = df_filtrado.groupby(["Chave", "Cidade", "Estado", "Latitude", "Longitude"]).size().reset_index(name="Qtd")
+        df_cidade = df_cidade.dropna(subset=["Latitude","Longitude"])
+        mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
+                                        hover_name="Cidade",
+                                        hover_data={"Estado":True,"Qtd":True},
+                                        color="Qtd",
+                                        color_continuous_scale=[COR_LARANJA, COR_ROXO],
+                                        size_max=35,
+                                        zoom=3,
+                                        height=600)
+        mapa_bolhas.update_layout(mapbox_style="open-street-map",
+                                  margin={"r":0,"t":0,"l":0,"b":0},
+                                  paper_bgcolor=COR_FUNDO,
+                                  plot_bgcolor=COR_FUNDO,
+                                  font_color=COR_TEXTO)
+        st.plotly_chart(mapa_bolhas, use_container_width=True)
     
-        # --- INÍCIO DA CORREÇÃO MATEMÁTICA ---
-    
-        # 1. Converte as colunas para o tipo numérico, tratando possíveis erros.
-        df_cidade['Latitude'] = pd.to_numeric(df_cidade['Latitude'], errors='coerce')
-        df_cidade['Longitude'] = pd.to_numeric(df_cidade['Longitude'], errors='coerce')
-    
-        # 2. (A CORREÇÃO CRÍTICA) Divide os valores por 10^7 para corrigir o ponto decimal ausente.
-        #    A condição 'abs(x) > 180' garante que a divisão só aconteça em números que claramente perderam o decimal.
-        df_cidade['Latitude'] = df_cidade['Latitude'].apply(lambda x: x / 10000000 if abs(x) > 90 else x)
-        df_cidade['Longitude'] = df_cidade['Longitude'].apply(lambda x: x / 10000000 if abs(x) > 180 else x)
-    
-        # 3. Remove qualquer linha que ainda tenha coordenadas nulas ou inválidas após a correção.
-        df_cidade.dropna(subset=["Latitude", "Longitude"], inplace=True)
-        df_cidade = df_cidade[df_cidade['Latitude'].between(-90, 90)]
-        df_cidade = df_cidade[df_cidade['Longitude'].between(-180, 180)]
-        
-        # 4. Verifica se, após a limpeza completa, ainda existem dados para mostrar.
-        if df_cidade.empty:
-            st.warning("Não há dados de cidades com coordenadas geográficas válidas para exibir com os filtros atuais.")
-        else:
-            # Se houver dados válidos, cria e exibe o mapa.
-            mapa_bolhas = px.scatter_mapbox(df_cidade, lat="Latitude", lon="Longitude", size="Qtd",
-                                            hover_name="Cidade",
-                                            hover_data={"Estado":True,"Qtd":True},
-                                            color="Qtd",
-                                            color_continuous_scale=[COR_LARANJA, COR_ROXO],
-                                            size_max=35,
-                                            zoom=3,
-                                            height=600)
-            mapa_bolhas.update_layout(mapbox_style="open-street-map",
-                                      margin={"r":0,"t":0,"l":0,"b":0},
-                                      paper_bgcolor=COR_FUNDO,
-                                      plot_bgcolor=COR_FUNDO,
-                                      font_color=COR_TEXTO)
-            st.plotly_chart(mapa_bolhas, use_container_width=True)
-    
-        # O código do gráfico de barras continua o mesmo
         st.subheader(f"🏙️ Top {top_n_cidades} Cidades com mais alunos")
         top_cidades = df_filtrado.groupby("Cidade").size().reset_index(name="Qtd Alunos")
         top_cidades = top_cidades.sort_values(by="Qtd Alunos", ascending=False).head(top_n_cidades)
-        
-        # Formata os números como texto ANTES de criar o gráfico
-        top_cidades['Qtd Alunos Formatado'] = top_cidades['Qtd Alunos'].apply(lambda x: f'{x:,}'.replace(',', '.'))
-        
         fig_top_cidades = px.bar(top_cidades, x="Qtd Alunos", y="Cidade", orientation="h",
-                                 text='Qtd Alunos Formatado',  # Usa a nova coluna formatada
-                                 color_discrete_sequence=[COR_ROXO])
-        
-        fig_top_cidades.update_traces(textfont=dict(color=COR_TEXTO)) # Removemos o texttemplate
-        
+                                 text="Qtd Alunos", color_discrete_sequence=[COR_ROXO])
+        fig_top_cidades.update_traces(texttemplate='%{text:,}'.replace(',', '.'), textfont=dict(color=COR_TEXTO))
         fig_top_cidades.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
                                       font_color=COR_TEXTO)
         st.plotly_chart(fig_top_cidades, use_container_width=True)
+
     # ========================
     # ABA ESTADOS
     # ========================
     with tab_estado:
         st.subheader("🗺️ Distribuição de alunos por estado")
         df_estado = df_filtrado.groupby("Estado").size().reset_index(name="Qtd")
-    
-        mapa_siglas = {
-            'ACRE': 'AC', 'ALAGOAS': 'AL', 'AMAPÁ': 'AP', 'AMAZONAS': 'AM', 'BAHIA': 'BA',
-            'CEARÁ': 'CE', 'DISTRITO FEDERAL': 'DF', 'ESPÍRITO SANTO': 'ES', 'GOIÁS': 'GO',
-            'MARANHÃO': 'MA', 'MATO GROSSO': 'MT', 'MATO GROSSO DO SUL': 'MS', 'MINAS GERAIS': 'MG',
-            'PARÁ': 'PA', 'PARAÍBA': 'PB', 'PARANÁ': 'PR', 'PERNAMBUCO': 'PE', 'PIAUÍ': 'PI',
-            'RIO DE JANEIRO': 'RJ', 'RIO GRANDE DO NORTE': 'RN', 'RIO GRANDE DO SUL': 'RS',
-            'RONDÔNIA': 'RO', 'RORAIMA': 'RR', 'SANTA CATARINA': 'SC', 'SÃO PAULO': 'SP',
-            'SERGIPE': 'SE', 'TOCANTINS': 'TO'
-        }
-        df_estado['Sigla'] = df_estado['Estado'].str.upper().map(mapa_siglas)
-    
-        # Remove estados que não foram mapeados para uma sigla (caso haja algum)
-        df_estado.dropna(subset=['Sigla'], inplace=True)
-    
         mapa_estados = px.choropleth(df_estado,
                                      geojson="https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson",
-                                     locations="Sigla",  # <-- CORRIGIDO AQUI
-                                     featureidkey="properties.sigla",
-                                     color="Qtd",
-                                     hover_name="Estado", # Para mostrar o nome completo
+                                     locations="Estado", featureidkey="properties.sigla", color="Qtd",
                                      color_continuous_scale=[COR_LARANJA, COR_ROXO],
                                      scope="south america",
                                      height=600)
-    
         mapa_estados.update_geos(fitbounds="locations", visible=False)
-    
         mapa_estados.update_layout(margin={"r":0,"t":0,"l":0,"b":0},
                                    paper_bgcolor=COR_FUNDO,
                                    plot_bgcolor=COR_FUNDO,
                                    font_color=COR_TEXTO,
                                    hoverlabel=dict(bgcolor=COR_ROXO, font_size=14, font_color=COR_TEXTO))
-    
-        # Template de hover corrigido
-        mapa_estados.update_traces(hovertemplate='<b>%{hover_name}</b><br>Qtd: %{z:,}')
-    
+        mapa_estados.update_traces(hovertemplate='Estado: %{location}<br>Qtd: %{z:,}'.replace(',', '.'))
         st.plotly_chart(mapa_estados, use_container_width=True)
     
         st.subheader(f"🗺️ Top {top_n_estados} Estados com mais alunos")
         top_estados = df_filtrado.groupby("Estado").size().reset_index(name="Qtd Alunos")
         top_estados = top_estados.sort_values(by="Qtd Alunos", ascending=False).head(top_n_estados)
-        
-        # Formata os números como texto ANTES de criar o gráfico
-        top_estados['Qtd Alunos Formatado'] = top_estados['Qtd Alunos'].apply(lambda x: f'{x:,}'.replace(',', '.'))
-        
         fig_top_estados = px.bar(top_estados, x="Qtd Alunos", y="Estado", orientation="h",
-                                 text='Qtd Alunos Formatado', # Usa a nova coluna formatada
-                                 color_discrete_sequence=[COR_LARANJA])
-        
-        fig_top_estados.update_traces(textfont=dict(color=COR_TEXTO)) # Removemos o texttemplate
-        
+                                 text="Qtd Alunos", color_discrete_sequence=[COR_LARANJA])
+        fig_top_estados.update_traces(texttemplate='%{text:,}'.replace(',', '.'), textfont=dict(color=COR_TEXTO))
         fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
                                       font_color=COR_TEXTO)
         st.plotly_chart(fig_top_estados, use_container_width=True)
     
-    # ========================
-    # RODAPÉ
-    # ========================
-    st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+        # ========================
+        # RODAPÉ
+        # ========================
+        st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
 
 elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
