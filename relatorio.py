@@ -3,9 +3,7 @@ import pandas as pd
 import plotly.express as px
 import gspread
 import streamlit_authenticator as stauth
-import bcrypt
 from gspread_dataframe import get_as_dataframe
-from supabase import create_client, Client
 
 # ========================
 # CONFIGURAÇÃO DA PÁGINA
@@ -15,54 +13,39 @@ st.set_page_config(page_title="Dashboard Acadêmica", page_icon="logo-unintese-s
 # ========================
 # LÓGICA DE AUTENTICAÇÃO
 # ========================
-# ========================
-# ========================
-# CONEXÃO COM SUPABASE
-# ========================
-url = st.secrets["supabase"]["url"]
-key = st.secrets["supabase"]["key"]
-supabase = create_client(url, key)
+# (Seu código de autenticação permanece o mesmo)
+config = {
+    'credentials': {
+        'usernames': {}
+    },
+    'cookie': {
+        'name': st.secrets['cookie']['name'],
+        'key': st.secrets['cookie']['key'],
+        'expiry_days': st.secrets['cookie']['expiry_days']
+    }
+}
+for username, user_info in st.secrets['credentials']['usernames'].items():
+    config['credentials']['usernames'][username] = {
+        'email': user_info['email'],
+        'name': user_info['name'],
+        'password': user_info['password']
+    }
 
-# ========================
-# SESSÃO
-# ========================
-if "user" not in st.session_state:
-    st.session_state.user = None
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days'],
+    cookie_path="/",
+    cookie_secure=True,
+    cookie_https_only=True
+)
 
-st.title("🔐 Login - Dashboard Acadêmico")
 
-# ========================
-# LOGIN
-# ========================
-if st.session_state.user is None:
-    email = st.text_input("Email")
-    password = st.text_input("Senha", type="password")
+authenticator.login('main')
 
-    if st.button("Entrar"):
-        try:
-            response = supabase.rpc(
-                "login_user",
-                {"email_input": email, "password_input": password}
-            ).execute()
-
-            if response.data:
-                user = response.data[0]
-                st.session_state.user = user
-                st.success("Login realizado!")
-                st.experimental_rerun()
-            else:
-                st.error("Email ou senha incorretos")
-        except Exception as e:
-            st.error(f"Erro no login: {e}")
-
-# ========================
-# DASHBOARD
-# ========================
-else:
-    st.sidebar.success(f"Bem-vindo(a), {st.session_state.user['user_name']}!")
-    if st.sidebar.button("Sair"):
-        st.session_state.user = None
-        st.experimental_rerun()
+if st.session_state["authentication_status"]:
+    # --- O DASHBOARD SÓ É RENDERIZADO SE O LOGIN FOR BEM-SUCEDIDO ---
 
     # ========================
     # CORES PRINCIPAIS
@@ -145,7 +128,8 @@ else:
         LOGO_EMPRESA = "logo-unintese-simples.png"
         st.image(LOGO_EMPRESA, use_container_width=True)
         
-        st.write(f'Bem-vindo(a), *{st.session_state.user["user_name"]}*')
+        st.write(f'Bem-vindo(a), *{st.session_state["name"]}*')
+        authenticator.logout('Logout')
         st.markdown("---")
 
         st.sidebar.markdown(f"<div style='padding:10px; border-radius:5px'>", unsafe_allow_html=True)
@@ -282,7 +266,10 @@ else:
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
 
-
+elif st.session_state["authentication_status"] is False:
+    st.error('Usuário ou senha incorreta')
+elif st.session_state["authentication_status"] is None:
+    st.warning('Por favor, insira seu usuário e senha')
 
 
 
