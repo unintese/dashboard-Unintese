@@ -15,47 +15,54 @@ st.set_page_config(page_title="Dashboard Acadêmica", page_icon="logo-unintese-s
 # ========================
 # LÓGICA DE AUTENTICAÇÃO
 # ========================
-# Conecta ao Supabase usando os secrets do Streamlit Cloud
+# ========================
+# CONEXÃO COM SUPABASE
+# ========================
 url = st.secrets["supabase"]["url"]
 key = st.secrets["supabase"]["key"]
 supabase = create_client(url, key)
 
-# Sessão
+# ========================
+# SESSÃO
+# ========================
 if "user" not in st.session_state:
     st.session_state.user = None
 
 st.title("🔐 Login - Dashboard Acadêmico")
 
+# ========================
+# LOGIN
+# ========================
 if st.session_state.user is None:
     email = st.text_input("Email")
     password = st.text_input("Senha", type="password")
 
     if st.button("Entrar"):
-        # Busca usuário no Supabase
-        response = supabase.table("users").select("*").eq("email", email).execute()
-        if response.data:
-            user = response.data[0]
-            if st.button("Entrar"):
-                # Chama uma função SQL que valida o login
-                response = supabase.rpc("login_user", {"email_input": email, "password_input": password}).execute()
-                if response.data:
-                    user = response.data[0]
-                    st.session_state.user = user
-                    st.success("Login realizado!")
-                    st.experimental_rerun()
-                else:
-                    st.error("Email ou senha incorretos")
+        try:
+            # Chama a função SQL no Supabase que valida email e senha
+            response = supabase.rpc(
+                "login_user",
+                {"email_input": email, "password_input": password}
+            ).execute()
 
-        else:
-            st.error("Usuário não encontrado")
+            if response.data:
+                user = response.data[0]
+                st.session_state.user = user
+                st.success("Login realizado!")
+                st.experimental_rerun()
+            else:
+                st.error("Email ou senha incorretos")
+        except Exception as e:
+            st.error(f"Erro no login: {e}")
 
+# ========================
+# DASHBOARD
+# ========================
 else:
     st.sidebar.success(f"Bem-vindo(a), {st.session_state.user['name']}!")
     if st.sidebar.button("Sair"):
         st.session_state.user = None
         st.experimental_rerun()
-
-if st.session_state.get("session") is not None:
     # --- O DASHBOARD SÓ É RENDERIZADO SE O LOGIN FOR BEM-SUCEDIDO ---
 
     # ========================
@@ -276,6 +283,7 @@ if st.session_state.get("session") is not None:
     # RODAPÉ
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+
 
 
 
