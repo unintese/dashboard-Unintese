@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import gspread
 import streamlit_authenticator as stauth
+import bcrypt
 from gspread_dataframe import get_as_dataframe
 from supabase import create_client, Client
 
@@ -270,6 +271,7 @@ if st.session_state.get("session") is not None:
     # RODAPÉ
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+
 
 
 
