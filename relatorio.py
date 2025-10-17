@@ -17,29 +17,23 @@ st.set_page_config(page_title="Dashboard Acadêmica", page_icon="logo-unintese-s
 # ========================
 # ========================
 # CONEXÃO COM SUPABASE
-# ========================
 url = st.secrets["supabase"]["url"]
 key = st.secrets["supabase"]["key"]
 supabase = create_client(url, key)
 
-# ========================
 # SESSÃO
-# ========================
 if "user" not in st.session_state:
     st.session_state.user = None
 
 st.title("🔐 Login - Dashboard Acadêmico")
 
-# ========================
 # LOGIN
-# ========================
 if st.session_state.user is None:
     email = st.text_input("Email")
     password = st.text_input("Senha", type="password")
 
     if st.button("Entrar"):
         try:
-            # Chama a função SQL no Supabase que valida email e senha
             response = supabase.rpc(
                 "login_user",
                 {"email_input": email, "password_input": password}
@@ -55,15 +49,12 @@ if st.session_state.user is None:
         except Exception as e:
             st.error(f"Erro no login: {e}")
 
-# ========================
 # DASHBOARD
-# ========================
 else:
     st.sidebar.success(f"Bem-vindo(a), {st.session_state.user['name']}!")
     if st.sidebar.button("Sair"):
         st.session_state.user = None
         st.experimental_rerun()
-    # --- O DASHBOARD SÓ É RENDERIZADO SE O LOGIN FOR BEM-SUCEDIDO ---
 
     # ========================
     # CORES PRINCIPAIS
@@ -283,6 +274,7 @@ else:
     # RODAPÉ
     # ========================
     st.markdown(f"<p style='text-align:center; color:{COR_TEXTO}; font-size:12px;'>Criado e desenvolvido por Eduardo Martins e Pietro Kettner</p>", unsafe_allow_html=True)
+
 
 
 
