@@ -279,7 +279,7 @@ if st.session_state["authentication_status"]:
         top_estados = top_estados.sort_values(by="Qtd Alunos", ascending=False).head(top_n_estados)
         fig_top_estados = px.bar(top_estados, x="Qtd Alunos", y="Estado", orientation="h",
                                  text="Qtd Alunos", color_discrete_sequence=[COR_LARANJA])
-        fig_top_estados.update_traces(texttemplate='%{text:,}'.replace(',', '.'), textfont=dict(color=COR_TEXTO))
+        fig_top_estados.update_traces(texttemplate='%{text:,s}', textfont=dict(color=COR_TEXTO))
         fig_top_estados.update_layout(yaxis={'categoryorder':'total ascending'},
                                       paper_bgcolor=COR_FUNDO,
                                       plot_bgcolor=COR_FUNDO,
@@ -295,6 +295,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
