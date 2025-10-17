@@ -15,21 +15,13 @@ st.set_page_config(page_title="Dashboard Acadêmica", page_icon="logo-unintese-s
 # ========================
 # (Seu código de autenticação permanece o mesmo)
 config = {
-    'credentials': {
-        'usernames': {}
-    },
+    'credentials': st.secrets['credentials'].to_dict(),
     'cookie': {
         'name': st.secrets['cookie']['name'],
         'key': st.secrets['cookie']['key'],
         'expiry_days': st.secrets['cookie']['expiry_days']
     }
 }
-for username, user_info in st.secrets['credentials']['usernames'].items():
-    config['credentials']['usernames'][username] = {
-        'email': user_info['email'],
-        'name': user_info['name'],
-        'password': user_info['password']
-    }
 
 authenticator = stauth.Authenticate(
     config['credentials'],
@@ -38,7 +30,8 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-authenticator.login('main')
+# A linha abaixo renderiza o formulário de login
+authenticator.login()
 
 if st.session_state["authentication_status"]:
     # --- O DASHBOARD SÓ É RENDERIZADO SE O LOGIN FOR BEM-SUCEDIDO ---
@@ -266,4 +259,5 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
