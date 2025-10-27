@@ -122,7 +122,7 @@ if st.session_state["authentication_status"]:
     # ========================
     # INFORMAÇÃO DE EXTRAÇÃO E TÍTULO
     # ========================
-    st.markdown(f"<p style='text-align:right; color:{COR_TEXTO}; font-size:12px;'>Dados extraídos em: 22/08/2025</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align:right; color:{COR_TEXTO}; font-size:12px;'>Dados extraídos em: 27/10/2025</p>", unsafe_allow_html=True)
     st.title("📊 Dashboard de Alunos")
 
     # ========================
@@ -201,7 +201,7 @@ if st.session_state["authentication_status"]:
             st.table(tabela_cursos)
         
             csv = df_filtrado.to_csv(index=False, sep=';').encode('utf-8')
-            st.download_button(label="📥 Download dos dados filtrados", data=csv, file_name='dados_filtrados.csv', mime='text/csv')
+            # st.download_button(label="📥 Download dos dados filtrados", data=csv, file_name='dados_filtrados.csv', mime='text/csv')
 
     # ========================
     # ABA CIDADES
@@ -280,6 +280,7 @@ elif st.session_state["authentication_status"] is False:
     st.error('Usuário ou senha incorreta')
 elif st.session_state["authentication_status"] is None:
     st.warning('Por favor, insira seu usuário e senha')
+
 
 
 
